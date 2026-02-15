@@ -1,0 +1,9 @@
+{
+  "name": "health-education-writer",
+  "description": "生成有溫度且專業可信的醫療衛教文章。涵蓋衛教文章、IG/FB 貼文、影片稿、症狀科普、紅旗警示、自我照護建議等內容類型。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": ["medical", "health-education", "taiwan", "衛教", "科普"]
+}

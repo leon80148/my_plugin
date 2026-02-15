@@ -1,0 +1,9 @@
+{
+  "name": "medical-content-team",
+  "description": "醫療內容創作 Agent 團隊協作系統。包含主持人、醫學記者、科學審查員、病人代言人、魔鬼代言人、流量獵人等 6 個 Agent，以及團隊討論和 PDF 圖表提取等指令。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": ["medical", "agent-teams", "collaboration", "content-creation", "衛教"]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "leon-claude-plugins",
+  "owner": {
+    "name": "leon"
+  },
+  "plugins": [
+    {
+      "name": "health-education-writer",
+      "source": "./health-education-writer",
+      "description": "生成有溫度且專業可信的醫療衛教文章",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "lora-training-prompts",
+      "source": "./lora-training-prompts",
+      "description": "生成一致性 AI 圖像提示詞用於 LoRA 訓練資料集",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "quickstart-doc-writer",
+      "source": "./quickstart-doc-writer",
+      "description": "產出快速上手說明文件",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "viral-app-builder",
+      "source": "./viral-app-builder",
+      "description": "跨平台爆款 App 全生命週期開發助手",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "nhs-pportal-screening",
+      "source": "./nhs-pportal-screening",
+      "description": "國健署預防保健篩檢資格查詢系統",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "source": "./ui-ux-pro-max",
+      "description": "UI/UX 設計智能系統",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "vision-database",
+      "source": "./vision-database",
+      "description": "展望醫療系統 HIS 資料庫查詢",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "medical-content-team",
+      "source": "./medical-content-team",
+      "description": "醫療內容創作 Agent 團隊協作系統",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    }
+  ]
+}

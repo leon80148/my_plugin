@@ -1,0 +1,9 @@
+# Local Claude Code config (not part of plugin distribution)
+.claude/settings.local.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Original .skill ZIP files
+*.skill

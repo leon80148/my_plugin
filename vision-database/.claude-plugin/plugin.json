@@ -1,0 +1,9 @@
+{
+  "name": "vision-database",
+  "description": "展望醫療系統 HIS 資料庫查詢技能。支援病患資料、處方、檢驗、預約、庫存等查詢，適用 SQLite 和 PostgreSQL。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": ["medical", "his", "database", "vision", "展望", "診所"]
+}
