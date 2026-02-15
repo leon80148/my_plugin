@@ -15,6 +15,7 @@ Claude Code plugin marketplace - 包含醫療內容創作、AI 訓練、文件�
 | `vision-database` | 展望醫療系統 HIS 資料庫查詢 |
 | `remotion-best-practices` | Remotion 影片製作最佳實踐（React 影片、動畫、字幕、音訊、3D） |
 | `nhri-risk-plugin` | 國衛院 NHRI V4 健康風險評估（CHD、中風、高血壓、糖尿病、MACE） |
+| `nhi-ic-card` | 健保IC卡讀卡整合（BhpNhi.dll API、篩檢流程、IC卡欄位、上傳格式2.0） |
 | `medical-content-team` | 醫療內容創作 Agent 團隊（6 Agents + 2 Commands） |
 
 ## 安裝方式

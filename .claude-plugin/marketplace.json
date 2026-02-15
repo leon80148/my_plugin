@@ -86,6 +86,15 @@
       }
     },
     {
+      "name": "nhi-ic-card",
+      "source": "./nhi-ic-card",
+      "description": "健保IC卡讀卡整合（BhpNhi.dll API、篩檢流程、IC卡欄位、上傳格式2.0）",
+      "version": "2.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
       "name": "medical-content-team",
       "source": "./medical-content-team",
       "description": "醫療內容創作 Agent 團隊協作系統",

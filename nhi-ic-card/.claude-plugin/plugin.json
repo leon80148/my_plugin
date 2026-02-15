@@ -1,0 +1,9 @@
+{
+  "name": "nhi-ic-card",
+  "description": "健保IC卡讀卡整合技能。涵蓋 BhpNhi.dll API 開發、回應碼解碼、成健/BC肝篩檢工作流程、IC卡欄位結構、資料上傳格式2.0。",
+  "version": "2.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": ["healthcare", "NHI", "IC-card", "BhpNhi", "dotnet", "screening", "Taiwan", "健保卡"]
+}
