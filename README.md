@@ -14,6 +14,7 @@ Claude Code plugin marketplace - 包含醫療內容創作、AI 訓練、文件�
 | `ui-ux-pro-max` | UI/UX 設計智能系統（67 風格、96 調色盤、56 字體配對） |
 | `vision-database` | 展望醫療系統 HIS 資料庫查詢 |
 | `remotion-best-practices` | Remotion 影片製作最佳實踐（React 影片、動畫、字幕、音訊、3D） |
+| `nhri-risk-plugin` | 國衛院 NHRI V4 健康風險評估（CHD、中風、高血壓、糖尿病、MACE） |
 | `medical-content-team` | 醫療內容創作 Agent 團隊（6 Agents + 2 Commands） |
 
 ## 安裝方式

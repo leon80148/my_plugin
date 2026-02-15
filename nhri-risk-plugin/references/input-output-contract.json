@@ -1,0 +1,32 @@
+{
+  "input": {
+    "gender": "integer; 1=male, otherwise female branch",
+    "age": "integer",
+    "sbp": "integer",
+    "tg": "number",
+    "ua": "number",
+    "chol": "number",
+    "hdlc": "number",
+    "ldlc": "number",
+    "glu": "number",
+    "bmi": "number",
+    "height": "number",
+    "weight": "number",
+    "ratio": "number",
+    "waist": "number",
+    "hip": "number",
+    "hbp": "integer",
+    "diabetes": "integer",
+    "smoke": "integer"
+  },
+  "output": {
+    "status": "integer; 0=ok, 1=validation error",
+    "error": "string",
+    "message": "string",
+    "risk": "number; percent",
+    "populationAvg": "number; percent",
+    "multipleDiff": "number; ratio",
+    "riskType": "integer; 0/1/2",
+    "version": "integer; 4 when calculation succeeds"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "chd": {
+    "status": 0,
+    "error": "",
+    "message": "",
+    "risk": 17.21,
+    "populationAvg": 12.07,
+    "multipleDiff": 142.58,
+    "riskType": 1,
+    "version": 4
+  },
+  "stroke": {
+    "status": 0,
+    "error": "",
+    "message": "",
+    "risk": 18.38,
+    "populationAvg": 16.35,
+    "multipleDiff": 112.42,
+    "riskType": 1,
+    "version": 4
+  },
+  "hypertension": {
+    "status": 0,
+    "error": "",
+    "message": "",
+    "risk": 74.58,
+    "populationAvg": 55.64,
+    "multipleDiff": 134.04,
+    "riskType": 2,
+    "version": 4
+  },
+  "diabetes": {
+    "status": 0,
+    "error": "",
+    "message": "",
+    "risk": 40.1,
+    "populationAvg": 32.31,
+    "multipleDiff": 124.11,
+    "riskType": 2,
+    "version": 4
+  },
+  "mace": {
+    "status": 0,
+    "error": "",
+    "message": "",
+    "risk": 22.12,
+    "populationAvg": 17.72,
+    "multipleDiff": 124.83,
+    "riskType": 2,
+    "version": 4
+  }
+}

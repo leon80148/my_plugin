@@ -1,0 +1,11 @@
+{
+  "AGE_REQUIRED": "age must be > 0",
+  "SBP_REQUIRED": "sbp must be > 0",
+  "HDLC_REQUIRED": "hdlc must be > 0",
+  "WAIST_REQUIRED": "waist must be > 0",
+  "CHOL_REQUIRED": "chol must be > 0",
+  "TG_REQUIRED": "tg must be > 0",
+  "GLU_REQUIRED": "glu must be > 0",
+  "LDLC_REQUIRED": "ldlc must be > 0",
+  "BMI_OR_HW_REQUIRED": "bmi > 0 or both height and weight must be > 0"
+}
