@@ -68,6 +68,15 @@
       }
     },
     {
+      "name": "remotion-best-practices",
+      "source": "./remotion-best-practices",
+      "description": "Remotion 影片製作最佳實踐（React 影片創建）",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
       "name": "medical-content-team",
       "source": "./medical-content-team",
       "description": "醫療內容創作 Agent 團隊協作系統",

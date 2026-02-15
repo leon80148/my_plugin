@@ -1,0 +1,9 @@
+{
+  "name": "remotion-best-practices",
+  "description": "Remotion 影片製作最佳實踐。涵蓋 React 影片創建、動畫、字幕、音訊、3D、轉場、圖表等完整領域知識。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": ["remotion", "video", "react", "animation", "composition"]
+}

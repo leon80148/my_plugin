@@ -13,6 +13,7 @@ Claude Code plugin marketplace - 包含醫療內容創作、AI 訓練、文件�
 | `nhs-pportal-screening` | 國健署預防保健篩檢資格查詢系統 |
 | `ui-ux-pro-max` | UI/UX 設計智能系統（67 風格、96 調色盤、56 字體配對） |
 | `vision-database` | 展望醫療系統 HIS 資料庫查詢 |
+| `remotion-best-practices` | Remotion 影片製作最佳實踐（React 影片、動畫、字幕、音訊、3D） |
 | `medical-content-team` | 醫療內容創作 Agent 團隊（6 Agents + 2 Commands） |
 
 ## 安裝方式
@@ -52,6 +53,15 @@ claude --plugin-dir ./medical-content-team
 | Patient Advocate | 病人可讀性代言人 |
 | Devil's Advocate | 批判思考、偏見檢測 |
 | Traffic Hunter | 社群媒體優化、流量策略 |
+
+## 推薦的其他 Plugin Marketplaces
+
+| Marketplace | 說明 | 安裝指令 |
+|---|---|---|
+| **Awesome Claude Skills** | 社群精選技能合集 | `/plugin marketplace add ComposioHQ/awesome-claude-skills` |
+| **Claude Official Plugins** | Anthropic 官方插件 | `/plugin marketplace add anthropics/claude-plugins-official` |
+| **Everything Claude Code** | 全方位開發技能套件（40+ skills） | `/plugin marketplace add affaan-m/everything-claude-code` |
+| **Jeffallan Claude Skills** | 社群貢獻技能集 | `/plugin marketplace add Jeffallan/claude-skills` |
 
 ## License
 
