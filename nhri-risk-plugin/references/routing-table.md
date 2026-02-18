@@ -32,3 +32,8 @@ Choose one row and load only that reference first.
 - Intent: convert scoring outputs to markdown/text/json summary
 - Open: `references/report-structure.md`
 - Script: `python scripts/run_module.py --module report -- --input <result.json> --format markdown`
+
+## Visualization
+- Intent: risk charts, color standards, dashboard embedding, PDF generation, accessibility
+- Open: `references/visualization-guide.md`
+- Script: `python scripts/run_module.py --module report -- --format html`

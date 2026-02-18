@@ -693,3 +693,400 @@ GROUP BY KDRUG ORDER BY MONTHLY_CONSUMPTION ASC;
 → CO05O (TBKDT=今日) 今日掛號
 → CO01M 病患基本資料
 → CO03L 歷史就診資訊
+
+---
+
+## 資料品質審計查詢
+
+資料品質是分析的基礎。以下查詢可定期執行，及早發現資料異常。
+
+### 重複記錄偵測
+
+同一病患同日同時間重複掛號，可能為系統重複寫入或操作錯誤：
+
+```sql
+-- 重複記錄偵測：同一病患同日同時間重複掛號
+SELECT KCSTMR, TBKDT, TBKTIME, COUNT(*) as cnt
+FROM CO05O GROUP BY KCSTMR, TBKDT, TBKTIME HAVING cnt > 1;
+```
+
+### 缺漏資料分析
+
+無身分證字號或身分證格式異常的病患，影響健保申報與家醫計畫關聯：
+
+```sql
+-- 缺漏資料分析：無身分證字號的病患
+SELECT KCSTMR, MNAME, MBIRTHDT FROM CO01M
+WHERE MPERSONID IS NULL OR MPERSONID = '' OR LENGTH(MPERSONID) != 10;
+```
+
+### 日期合理性檢查
+
+出現未來日期的就診記錄，通常為資料輸入錯誤：
+
+```sql
+-- 日期合理性檢查：未來日期的就診記錄
+SELECT KCSTMR, DATE, TIME, LABNO FROM CO03L
+WHERE DATE > strftime('%Y%m%d', 'now', '-1911 years');
+```
+
+> **注意**：此查詢利用 SQLite 的 `strftime` 將當前西元日期轉換為民國年格式進行比較。PostgreSQL 請改用 `TO_CHAR(NOW() - INTERVAL '1911 years', 'YYYMMDD')` 或直接傳入民國年字串。
+
+### 孤兒記錄偵測
+
+有處方但無對應就診記錄，可能為資料同步問題：
+
+```sql
+-- 孤兒記錄：有處方但無對應就診記錄
+SELECT m.KCSTMR, m.IDATE, m.ITIME, m.DNO
+FROM CO02M m LEFT JOIN CO03L l ON m.KCSTMR = l.KCSTMR AND m.IDATE = l.DATE AND m.ITIME = l.TIME
+WHERE l.KCSTMR IS NULL;
+```
+
+### 資料一致性檢查
+
+CO03L 與 CO03M 的診斷碼理論上應一致，不一致可能為修改後未同步：
+
+```sql
+-- 資料一致性：CO03L 與 CO03M 的診斷碼不一致
+SELECT l.KCSTMR, l.DATE, l.LABNO as L_ICD, m.LABNO as M_ICD
+FROM CO03L l JOIN CO03M m ON l.KCSTMR = m.KCSTMR AND l.DATE = m.IDATE AND l.TIME = m.ITIME
+WHERE l.LABNO != m.LABNO;
+```
+
+---
+
+## 效能監控查詢
+
+以下查詢適用於 **PostgreSQL（Anchia Clinic Monitor）** 環境，用於監控資料庫效能與資源使用。
+
+### 慢查詢識別
+
+需先啟用 `pg_stat_statements` 擴充套件：
+
+```sql
+-- 慢查詢識別
+SELECT query, calls, mean_exec_time, total_exec_time
+FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 20;
+```
+
+### 表格大小監控
+
+```sql
+-- 表格大小監控
+SELECT relname, pg_size_pretty(pg_total_relation_size(relid)) as total_size,
+       n_live_tup as row_count
+FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC;
+```
+
+### 索引使用率分析
+
+```sql
+-- 索引使用率分析
+SELECT indexrelname, idx_scan, idx_tup_read, idx_tup_fetch
+FROM pg_stat_user_indexes ORDER BY idx_scan ASC;
+```
+
+### 未使用的索引
+
+長期 `idx_scan = 0` 的索引佔用空間卻無貢獻，可考慮刪除：
+
+```sql
+-- 未使用的索引（建議刪除候選）
+SELECT indexrelname, idx_scan FROM pg_stat_user_indexes
+WHERE idx_scan = 0 AND indexrelname NOT LIKE 'pg_%';
+```
+
+> **注意**：刪除索引前建議觀察至少一個完整業務週期（通常 1 個月），確認確實未被使用。
+
+---
+
+## 儀表板 / 報表查詢模板
+
+以下為常見報表需求的查詢模板，適用於 SQLite 語法。參數以 `?` 表示，依環境替換。
+
+### 每日門診摘要
+
+```sql
+-- 每日門診摘要
+SELECT
+    DATE as 看診日期,
+    COUNT(DISTINCT KCSTMR) as 看診人次,
+    COUNT(CASE WHEN LPID = 'A' THEN 1 END) as 健保,
+    COUNT(CASE WHEN LPID = '9' OR LPID = '' OR LPID IS NULL THEN 1 END) as 自費,
+    COUNT(CASE WHEN LISRS IN ('3D','21','22','3E','23','24') THEN 1 END) as 成健,
+    COUNT(CASE WHEN LISRS IN ('85','95') THEN 1 END) as 癌篩
+FROM CO03L WHERE DATE = ? GROUP BY DATE;
+```
+
+### 月度統計報表
+
+```sql
+-- 月度統計報表
+SELECT
+    SUBSTR(DATE, 1, 5) as 年月,
+    COUNT(DISTINCT KCSTMR) as 不重複病患數,
+    COUNT(*) as 總看診次數,
+    SUM(CASE WHEN LABNO LIKE 'E11%' THEN 1 ELSE 0 END) as 糖尿病,
+    SUM(CASE WHEN LABNO LIKE 'I10%' OR LABNO LIKE 'I11%' THEN 1 ELSE 0 END) as 高血壓
+FROM CO03L GROUP BY SUBSTR(DATE, 1, 5) ORDER BY 年月 DESC;
+```
+
+### 疾病管理追蹤率
+
+糖尿病患者 HbA1c 檢驗完成率追蹤。`?` 參數為民國年日期閾值（例如 `1140101` 表示 114 年 1 月 1 日之後算已追蹤）：
+
+```sql
+-- 疾病管理追蹤率（糖尿病患者 HbA1c 檢驗完成率）
+SELECT
+    p.KCSTMR, p.MNAME,
+    MAX(h.HDATE) as 最近HbA1c日期,
+    MAX(h.HVAL) as 最近HbA1c值,
+    CASE WHEN MAX(h.HDATE) >= ? THEN '已追蹤' ELSE '待追蹤' END as 追蹤狀態
+FROM CO01M p
+JOIN CO03L l ON p.KCSTMR = l.KCSTMR AND l.LABNO LIKE 'E11%'
+LEFT JOIN CO18H h ON p.KCSTMR = h.KCSTMR AND h.HITEM = 'Z0SHbA1c'
+GROUP BY p.KCSTMR, p.MNAME;
+```
+
+### 藥品消耗趨勢
+
+近 6 個月藥品消耗量趨勢。`?` 參數為起始日期（例如 `1140701` 表示 114 年 7 月起）：
+
+```sql
+-- 藥品消耗趨勢（近6個月）
+SELECT
+    SUBSTR(DDATE, 1, 5) as 年月,
+    d.DDESC2 as 藥品名稱,
+    SUM(s.DQTY) as 消耗量
+FROM CO09S s JOIN CO09D d ON s.KDRUG = d.KDRUG
+WHERE s.DIO = '5' AND s.DDATE >= ?
+GROUP BY SUBSTR(DDATE, 1, 5), d.DDESC2
+ORDER BY d.DDESC2, 年月;
+```
+
+---
+
+## 查詢優化建議
+
+### 建議索引
+
+針對常見查詢模式，建議建立以下索引以加速查詢效能：
+
+```sql
+-- CO03L：依病歷號+日期查詢就診歷史（最常用）
+CREATE INDEX idx_co03l_kcstmr_date ON CO03L (KCSTMR, DATE DESC);
+
+-- CO03L：依診斷碼篩選病患
+CREATE INDEX idx_co03l_labno ON CO03L (LABNO);
+
+-- CO18H：依病歷號+檢驗項目查詢趨勢
+CREATE INDEX idx_co18h_kcstmr_hitem_hdate ON CO18H (KCSTMR, HITEM, HDATE DESC);
+
+-- CO02M：依病歷號+日期查詢處方
+CREATE INDEX idx_co02m_kcstmr_idate ON CO02M (KCSTMR, IDATE DESC);
+
+-- CO02H：依病歷號+日期查詢 SOAP Notes
+CREATE INDEX idx_co02h_kcstmr_sdate ON CO02H (KCSTMR, SDATE DESC, STIME DESC, SATB ASC);
+
+-- CO05O：今日門診看板
+CREATE INDEX idx_co05o_tbkdt_tsts ON CO05O (TBKDT, TSTS);
+
+-- CO09S：庫存異動查詢
+CREATE INDEX idx_co09s_kdrug_ddate ON CO09S (KDRUG, DDATE DESC);
+```
+
+### Materialized View 建議（PostgreSQL）
+
+針對儀表板反覆查詢的統計資料，建議使用 Materialized View 預先計算，避免每次查詢都掃描全表：
+
+```sql
+-- 月度門診統計（每日排程更新）
+CREATE MATERIALIZED VIEW mv_monthly_stats AS
+SELECT
+    SUBSTR("date", 1, 5) as year_month,
+    COUNT(DISTINCT "kcstmr") as unique_patients,
+    COUNT(*) as total_visits,
+    SUM(CASE WHEN "labno" LIKE 'E11%' THEN 1 ELSE 0 END) as diabetes_visits,
+    SUM(CASE WHEN "labno" LIKE 'I10%' OR "labno" LIKE 'I11%' THEN 1 ELSE 0 END) as hypertension_visits
+FROM co03l
+GROUP BY SUBSTR("date", 1, 5);
+
+-- 定期刷新（建議排程每日凌晨執行）
+REFRESH MATERIALIZED VIEW mv_monthly_stats;
+```
+
+### 分頁查詢模式
+
+大量資料查詢時，應避免單純的 `LIMIT/OFFSET`，改用 Keyset Pagination（游標分頁）以維持穩定效能：
+
+```sql
+-- 不建議：OFFSET 越大越慢
+SELECT * FROM CO03L ORDER BY DATE DESC, TIME DESC LIMIT 50 OFFSET 10000;
+
+-- 建議：Keyset Pagination（以上一頁最後一筆的 DATE+TIME 作為游標）
+SELECT * FROM CO03L
+WHERE (DATE, TIME) < (?, ?)    -- 上一頁最後一筆的 DATE 和 TIME
+ORDER BY DATE DESC, TIME DESC
+LIMIT 50;
+```
+
+Keyset Pagination 的優點：
+- 無論在第幾頁，查詢時間穩定一致
+- 避免 OFFSET 造成的重複或遺漏（資料異動時）
+- 搭配索引（如 `idx_co03l_kcstmr_date`）效能更佳
+
+### EXPLAIN 用法
+
+在優化查詢前，先用 `EXPLAIN` 確認查詢計劃：
+
+```sql
+-- SQLite：查看查詢計劃
+EXPLAIN QUERY PLAN SELECT * FROM CO03L WHERE KCSTMR = '0000024' AND DATE > '1140101';
+
+-- PostgreSQL：查看詳細執行計劃（含實際時間）
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT * FROM co03l WHERE "kcstmr" = '0000024' AND "date" > '1140101';
+```
+
+**判讀重點**：
+- `SCAN TABLE` / `Seq Scan`：全表掃描，資料量大時效能差，考慮加索引
+- `SEARCH TABLE USING INDEX` / `Index Scan`：使用索引，效能佳
+- `USING COVERING INDEX`：索引已包含所需欄位，無需回表查詢，效能最佳
+- PostgreSQL 的 `actual time` 與 `rows` 可確認預估與實際是否偏差過大
+
+---
+
+## SOAP Notes 全文搜尋
+
+### SQLite FTS5
+
+```sql
+-- 建立 FTS 虛擬表
+CREATE VIRTUAL TABLE soap_fts USING fts5(
+  kcstmr,       -- 病患代碼
+  date,          -- 日期
+  subjective,    -- 主訴
+  objective,     -- 理學檢查
+  assessment,    -- 評估/診斷
+  plan_text,     -- 處置計畫
+  content='CO03L',
+  content_rowid='rowid'
+);
+
+-- 從現有資料填入
+INSERT INTO soap_fts(rowid, kcstmr, date, subjective, objective, assessment, plan_text)
+SELECT rowid, KCSTMR, DATE, MEM1, MEM2, MEM3, MEM4 FROM CO03L;
+
+-- 全文搜尋範例：搜尋包含「頭痛」的 SOAP 記錄
+SELECT kcstmr, date, subjective, assessment
+FROM soap_fts
+WHERE soap_fts MATCH '頭痛'
+ORDER BY rank;
+
+-- 搜尋特定病患的 SOAP 中包含「血壓」的記錄
+SELECT date, subjective, objective
+FROM soap_fts
+WHERE soap_fts MATCH 'kcstmr:0000024 AND 血壓';
+
+-- 維護：當 CO03L 新增資料時更新 FTS 索引
+INSERT INTO soap_fts(rowid, kcstmr, date, subjective, objective, assessment, plan_text)
+SELECT rowid, KCSTMR, DATE, MEM1, MEM2, MEM3, MEM4
+FROM CO03L
+WHERE rowid > (SELECT MAX(rowid) FROM soap_fts);
+```
+
+### PostgreSQL tsvector
+
+```sql
+-- 新增 tsvector 欄位（使用 zhparser 或 pg_jieba 做中文分詞）
+ALTER TABLE co03l ADD COLUMN soap_tsv tsvector;
+
+-- 更新 tsvector（需要中文分詞擴充套件）
+UPDATE co03l SET soap_tsv =
+  to_tsvector('zhparser', COALESCE(mem1,'') || ' ' || COALESCE(mem2,'') || ' ' || COALESCE(mem3,'') || ' ' || COALESCE(mem4,''));
+
+-- 建立 GIN 索引
+CREATE INDEX idx_co03l_soap_tsv ON co03l USING GIN(soap_tsv);
+
+-- 全文搜尋
+SELECT kcstmr, date, mem1 AS subjective, mem3 AS assessment
+FROM co03l
+WHERE soap_tsv @@ to_tsquery('zhparser', '頭痛 & 發燒')
+ORDER BY date DESC;
+
+-- 觸發器：自動維護 tsvector
+CREATE OR REPLACE FUNCTION update_soap_tsv() RETURNS trigger AS $$
+BEGIN
+  NEW.soap_tsv := to_tsvector('zhparser',
+    COALESCE(NEW.mem1,'') || ' ' || COALESCE(NEW.mem2,'') || ' ' ||
+    COALESCE(NEW.mem3,'') || ' ' || COALESCE(NEW.mem4,''));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_soap_tsv BEFORE INSERT OR UPDATE ON co03l
+FOR EACH ROW EXECUTE FUNCTION update_soap_tsv();
+```
+
+---
+
+## 資料匿名化指南
+
+### 匿名化欄位對照
+
+| 欄位 | 原始值 | 匿名化方式 | 匿名化後範例 |
+|------|--------|-----------|------------|
+| KCSTMR（病患碼） | `0000024` | 隨機對應表 | `PAT_A7X9K2` |
+| 身分證字號 | `A123456789` | SHA-256 雜湊 | `a8f5f167...` |
+| 姓名 | `王大明` | 替換為假名 | `匿名病患 024` |
+| 生日 | `0750315` | 年份模糊化（±2年） | `0770000` |
+| 地址 | 完整地址 | 只保留縣市 | `台北市` |
+| 電話 | `0912345678` | 遮罩 | `0912***678` |
+
+### 匿名化原則
+
+1. **不可逆**：用於外部分享的資料必須不可逆匿名化
+2. **一致性**：同一病患在不同表格中的匿名化 ID 必須一致
+3. **保留分析價值**：日期可模糊化但應保留就診間隔
+4. **最小揭露**：只輸出分析所需的最少欄位
+
+---
+
+## VISHFAM Schema 補充
+
+### 主要表格關聯
+
+```
+CSTMR（病患主檔）
+├── CO03L（門診記錄） ← KCSTMR
+├── CO04L（處方明細） ← KCSTMR + DATE
+├── CO05L（檢驗結果） ← KCSTMR
+├── CO06L（影像報告） ← KCSTMR
+└── CO07L（過敏記錄） ← KCSTMR
+
+CO03L（門診記錄）
+├── MEM1: Subjective（主訴）
+├── MEM2: Objective（理學檢查）
+├── MEM3: Assessment（評估/診斷）
+├── MEM4: Plan（處置計畫）
+├── ICD1-ICD5: 診斷碼
+└── DOCTOR: 看診醫師代碼
+```
+
+### 常用跨表查詢模式
+
+```sql
+-- 查詢病患的完整就診紀錄（門診 + 處方 + 檢驗）
+SELECT
+  c.DATE AS 就診日期,
+  c.MEM3 AS 診斷,
+  GROUP_CONCAT(DISTINCT p.KNAME) AS 藥品,
+  GROUP_CONCAT(DISTINCT l.ITEM || ':' || l.RESULT) AS 檢驗
+FROM CO03L c
+LEFT JOIN CO04L p ON c.KCSTMR = p.KCSTMR AND c.DATE = p.DATE
+LEFT JOIN CO05L l ON c.KCSTMR = l.KCSTMR AND c.DATE = l.DATE
+WHERE c.KCSTMR = '0000024'
+GROUP BY c.DATE, c.MEM3
+ORDER BY c.DATE DESC;
+```

@@ -177,3 +177,476 @@ var bhpNhi = new BhpNhi.Bhp();
 5. **範例程式按鈕事件未綁定** — 官方範例 Designer.cs 中只有 `btn_getConsoleStatus` 有綁定，其餘 7 個按鈕需手動補上。
 
 6. **DLL 參考路徑不一致** — .csproj 寫的路徑與實際不同，建置前需確認。下載的 DLL 可能被 Windows 封鎖，需右鍵解除。
+
+---
+
+## 自動化測試策略
+
+在無實體讀卡機的環境下（如 CI/CD、開發機），仍需確保程式邏輯正確。以下為建議的測試策略。
+
+### Mock 讀卡機模式
+
+建立 `IBhpNhi` 介面，將 `BhpNhi.Bhp` 的方法抽象化，測試時注入 Mock 實作：
+
+```csharp
+// 定義介面
+public interface IBhpNhi
+{
+    string GetPersonData();
+    string ValidAdult();
+    string ValidBcLiver();
+    string ValidAll();
+    string RegisterBcLiver();
+    string CancelBcLiver();
+    string GetVersion();
+    string GetStatus();
+}
+
+// 正式環境：包裝真實 DLL
+public class BhpNhiWrapper : IBhpNhi
+{
+    private readonly BhpNhi.Bhp _bhp = new();
+    public string GetPersonData() => _bhp.GetPersonData();
+    public string ValidAll() => _bhp.ValidAll();
+    // ... 其餘方法同理
+}
+
+// 測試環境：回傳預設 JSON
+public class MockBhpNhi : IBhpNhi
+{
+    public string ScenarioCode { get; set; } = "0101-00";
+
+    public string GetPersonData() => JsonSerializer.Serialize(new {
+        Status = true,
+        Person = new {
+            HospId = "0000000000",
+            SamId = "0000000000000000",
+            CardId = "000000000000",
+            Pid = "A123456789",
+            Birth = "0761015",
+            RegisterPrevent = "000000000000"
+        }
+    });
+
+    public string ValidAll() => JsonSerializer.Serialize(new {
+        Status = true,
+        Code = ScenarioCode,
+        Message = "Mock 回應"
+    });
+
+    // ... 其餘方法依需求設計回傳值
+}
+```
+
+在 DI 容器中依環境切換：
+
+```csharp
+if (Environment.GetEnvironmentVariable("USE_MOCK_CARD") == "true")
+    services.AddSingleton<IBhpNhi, MockBhpNhi>();
+else
+    services.AddSingleton<IBhpNhi, BhpNhiWrapper>();
+```
+
+### Integration Test 模式
+
+使用模擬的 XXYY-ZZ 回應碼，測試所有程式分支：
+
+```csharp
+[Theory]
+[InlineData("0101-00", true, true)]    // 成健+BC肝皆符合（一般身分）
+[InlineData("0101-01", true, true)]    // 成健+BC肝皆符合（原住民）
+[InlineData("0303-00", false, false)]  // 兩者皆已做過
+[InlineData("0201-00", false, true)]   // 成健年齡不符，BC肝符合
+[InlineData("0102-00", true, false)]   // 成健符合，BC肝年齡不符
+[InlineData("0003-00", false, false)]  // 成健未查，BC肝已做過
+public void ValidAll_ShouldParseCorrectly(string code, bool adultEligible, bool bcLiverEligible)
+{
+    var mock = new MockBhpNhi { ScenarioCode = code };
+    var service = new ScreeningService(mock);
+
+    var result = service.CheckEligibility();
+
+    Assert.Equal(adultEligible, result.AdultEligible);
+    Assert.Equal(bcLiverEligible, result.BcLiverEligible);
+}
+```
+
+### 錯誤情境對照表
+
+| 錯誤碼 | 情境描述 | 測試方式 | 預期行為 |
+|--------|---------|---------|---------|
+| `9999` | Token 驗證失敗（未先讀卡/網路不通） | Mock `GetPersonData()` 回傳 `Status=false, Code="9999"` | 顯示「請先插入健保卡並讀卡」提示，禁用後續操作 |
+| `9998` | 主控台/SAM卡/卡片驗證失敗 | Mock 回傳 `Code="9998"` | 顯示「請確認讀卡機已連接、SAM卡已插入」，導引至設定頁 |
+| `9001` | 資料格式檢核不正確 | 傳入格式異常的 RegisterPrevent 字串 | 記錄錯誤日誌，顯示「資料格式異常，請聯繫系統管理員」 |
+| `9002` | 健保卡註記含空白或特殊字元 | Mock 回傳含特殊字元的 RegisterPrevent | 自動 Trim 處理，或提示「卡片資料異常」 |
+
+### CI/CD 考量
+
+在無實體讀卡機的 CI/CD 環境中執行測試的方式：
+
+1. **環境變數切換**：設定 `USE_MOCK_CARD=true`，所有 DLL 呼叫自動導向 Mock 實作
+2. **Mock DLL 方式**：將 `IBhpNhi` 介面的 Mock 實作編譯為獨立 DLL，CI 環境不需安裝讀卡機驅動
+3. **HTTP Proxy 方式**：將讀卡功能包裝為 HTTP API（見下節），CI 環境對測試用的 Mock Server 發送請求
+4. **測試分層**：
+   - **Unit Tests**（CI 必跑）：使用 Mock，測試業務邏輯與代碼解析
+   - **Integration Tests**（手動觸發）：需實體讀卡機，在開發機或測試機執行
+   - 在 CI pipeline 中以 `[Trait("Category", "Integration")]` 標記，預設排除
+
+---
+
+## 跨平台整合指引
+
+BhpNhi.dll 為 .NET Framework / .NET 元件，其他語言需透過中介方式存取。以下為常見整合方案。
+
+### REST API 包裝
+
+將 DLL 功能包裝成 HTTP API，是最通用的跨語言方案。
+
+**ASP.NET Minimal API 範例**（.NET 6+）：
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<IBhpNhi, BhpNhiWrapper>();
+
+var app = builder.Build();
+
+app.MapGet("/api/card/status", (IBhpNhi bhp) =>
+    Results.Ok(new { status = bhp.GetStatus() }));
+
+app.MapPost("/api/card/read", (IBhpNhi bhp) =>
+{
+    var json = bhp.GetPersonData();
+    return Results.Content(json, "application/json");
+});
+
+app.MapPost("/api/screening/check", (IBhpNhi bhp) =>
+{
+    var json = bhp.ValidAll();
+    return Results.Content(json, "application/json");
+});
+
+app.MapPost("/api/screening/register-bcliver", (IBhpNhi bhp) =>
+{
+    var json = bhp.RegisterBcLiver();
+    return Results.Content(json, "application/json");
+});
+
+app.MapPost("/api/screening/cancel-bcliver", (IBhpNhi bhp) =>
+{
+    var json = bhp.CancelBcLiver();
+    return Results.Content(json, "application/json");
+});
+
+app.Run("http://localhost:5100");
+```
+
+部署時建議：
+- 僅綁定 `localhost` 或內網 IP，避免暴露於外網
+- 加入 API Key 驗證中介軟體
+- 記錄所有讀卡操作的稽核日誌
+
+### Node.js 整合
+
+**方式一：HTTP 呼叫**（推薦，搭配上述 REST API）：
+
+```javascript
+const axios = require('axios');
+const CARD_API = 'http://localhost:5100';
+
+async function readCard() {
+    const { data } = await axios.post(`${CARD_API}/api/card/read`);
+    return data;
+}
+
+async function checkScreening() {
+    const { data } = await axios.post(`${CARD_API}/api/screening/check`);
+    return data;
+}
+```
+
+**方式二：edge-js 直接呼叫 .NET**（需 Node.js 與 .NET 同機）：
+
+```javascript
+const edge = require('edge-js');
+
+const getPersonData = edge.func({
+    assemblyFile: 'path/to/BhpNhiWrapper.dll',
+    typeName: 'BhpNhiWrapper.Bridge',
+    methodName: 'GetPersonData'
+});
+
+getPersonData(null, (error, result) => {
+    if (error) throw error;
+    console.log(JSON.parse(result));
+});
+```
+
+**方式三：child_process 呼叫 CLI**：
+
+```javascript
+const { execSync } = require('child_process');
+const result = execSync('dotnet run --project CardReaderCli -- read-card', { encoding: 'utf-8' });
+const data = JSON.parse(result);
+```
+
+### Python 整合
+
+**方式一：HTTP 呼叫**（推薦）：
+
+```python
+import requests
+
+CARD_API = "http://localhost:5100"
+
+def read_card():
+    resp = requests.post(f"{CARD_API}/api/card/read")
+    return resp.json()
+
+def check_screening():
+    resp = requests.post(f"{CARD_API}/api/screening/check")
+    return resp.json()
+```
+
+**方式二：pythonnet 直接載入 .NET DLL**：
+
+```python
+import clr
+clr.AddReference(r"C:\path\to\BhpNhi.dll")
+from BhpNhi import Bhp
+
+bhp = Bhp()
+person_json = bhp.GetPersonData()
+```
+
+> **注意**：pythonnet 需安裝對應的 .NET Runtime，且 32/64 位元需與 DLL 一致。
+
+**方式三：subprocess 呼叫 CLI**：
+
+```python
+import subprocess, json
+
+result = subprocess.run(
+    ["dotnet", "run", "--project", "CardReaderCli", "--", "read-card"],
+    capture_output=True, text=True
+)
+data = json.loads(result.stdout)
+```
+
+### Docker 容器化考量
+
+由於讀卡機為 USB 硬體裝置，Docker 容器化有以下限制與注意事項：
+
+1. **USB 裝置傳遞**：需使用 `--device` 參數將讀卡機裝置傳入容器
+   ```bash
+   docker run --device=/dev/bus/usb/001/003 my-card-reader-app
+   ```
+
+2. **Windows 容器**：在 Windows 環境建議使用 Windows Container 或直接在 Host 執行讀卡服務，Linux 容器無法存取 Windows 的 USB 裝置
+
+3. **建議架構**：將系統拆為兩層
+   - **讀卡服務**：直接在有讀卡機的 Windows 主機上執行（REST API 模式）
+   - **業務邏輯**：容器化部署，透過 HTTP 呼叫讀卡服務
+
+4. **健保卡控制軟體**：健保署的控制軟體 6.0 需安裝在有讀卡機的主機上，無法容器化
+
+---
+
+## 首次設定檢查清單
+
+初次建置健保卡讀卡環境時，請依序完成以下步驟：
+
+### 1. 安裝健保卡控制軟體 6.0
+
+- [ ] 從健保署網站下載「健保卡控制軟體 6.0」安裝程式
+- [ ] 以系統管理員身分執行安裝
+- [ ] 安裝完成後確認桌面或開始功能表出現「健保卡控制軟體主控台」
+
+### 2. 連接讀卡機硬體
+
+- [ ] 將 IC 卡讀卡機連接至電腦 USB 埠
+- [ ] 確認 Windows 裝置管理員中出現智慧卡讀卡機裝置（無驚嘆號）
+- [ ] 若驅動未自動安裝，手動安裝讀卡機廠商提供的驅動程式
+
+### 3. 插入 SAM 卡
+
+- [ ] 將健保署核發的 SAM 卡插入讀卡機的 SAM 卡槽（通常在讀卡機背面或側面）
+- [ ] SAM 卡晶片面朝上或依讀卡機說明書方向插入
+- [ ] 確認 SAM 卡已到底、接觸良好
+
+### 4. 啟動主控台並驗證狀態
+
+- [ ] 開啟「健保卡控制軟體主控台」
+- [ ] 確認主控台顯示「就緒」或綠燈狀態
+- [ ] 在程式中呼叫 `GetStatus()` 確認回傳正常
+
+```csharp
+var bhp = new BhpNhi.Bhp();
+var status = bhp.GetStatus();
+Console.WriteLine($"主控台狀態: {status}");
+// 預期回傳：表示就緒的狀態字串
+```
+
+### 5. 測試讀取健保卡
+
+- [ ] 插入一張有效的健保卡
+- [ ] 呼叫 `GetPersonData()` 讀取卡片資料
+
+```csharp
+var personJson = bhp.GetPersonData();
+Console.WriteLine(personJson);
+// 預期回傳：包含 Status=true 的 JSON，含 Person 物件
+```
+
+- [ ] 確認回傳的 JSON 中 `Status` 為 `true`
+- [ ] 確認 `Person.Pid`（身分證字號）與卡片持有人一致
+
+### 6. 常見首次設定問題
+
+| 症狀 | 可能原因 | 解決方式 |
+|------|---------|---------|
+| `GetStatus()` 無回應或例外 | 主控台未啟動 | 啟動健保卡控制軟體主控台 |
+| `GetPersonData()` 回傳 9998 | SAM 卡未插入或接觸不良 | 重新插入 SAM 卡，確認方向正確 |
+| `GetPersonData()` 回傳 9999 | 網路不通或 Token 服務異常 | 檢查網路連線，確認可連至健保署伺服器 |
+| DLL 載入失敗 `DllNotFoundException` | DLL 路徑不正確或被 Windows 封鎖 | 確認 .csproj 的 DLL 參考路徑，右鍵 DLL 檔案→內容→解除封鎖 |
+| `BadImageFormatException` | 32/64 位元不符 | 確認專案的目標平台與 DLL 位元數一致（通常為 x86） |
+| 讀卡機在裝置管理員有驚嘆號 | 驅動程式未安裝或版本不符 | 更新讀卡機驅動程式 |
+| 主控台顯示「SAM 卡驗證失敗」 | SAM 卡過期或損壞 | 聯繫健保署更換 SAM 卡 |
+
+---
+
+## 虛擬健保卡整合指南
+
+### 概述
+
+虛擬健保卡是健保署推出的數位憑證方案，透過 QR Code 或雲端 API 驗證身份，無需實體 IC 卡。
+
+### 整合方式比較
+
+| 方式 | 流程 | 適用場景 | 需要讀卡機 |
+|------|------|---------|-----------|
+| QR Code 掃描 | 病患出示 App QR Code → 診所掃描 → 雲端驗證 | 門診現場 | 否（需掃碼設備） |
+| Cloud API | 系統直接呼叫雲端 API 驗證 | 遠距醫療、線上預約 | 否 |
+| 實體卡 + 虛擬卡並行 | 同時支援兩種方式 | 過渡期診所 | 是（實體卡用） |
+
+### Cloud API 認證流程（OAuth 2.0）
+
+```
+1. 診所系統向健保署 OAuth Server 取得 Access Token
+   POST /oauth/token
+   grant_type=client_credentials
+   client_id={診所代碼}
+   client_secret={密鑰}
+
+2. 使用 Access Token 呼叫虛擬健保卡 API
+   GET /api/v1/virtual-card/verify
+   Authorization: Bearer {access_token}
+   X-Patient-QRCode: {qr_code_content}
+
+3. 回傳病患基本資料（與實體卡 GetPersonData 相同結構）
+```
+
+### QR Code 整合
+
+```csharp
+// 掃描 QR Code 後的驗證流程
+public async Task<PatientInfo> VerifyVirtualCard(string qrCodeContent)
+{
+    // 1. 確認 Token 有效
+    await EnsureValidToken();
+
+    // 2. 呼叫驗證 API
+    var response = await _httpClient.GetAsync(
+        $"{_baseUrl}/api/v1/virtual-card/verify?qr={Uri.EscapeDataString(qrCodeContent)}");
+
+    // 3. 處理回傳
+    if (!response.IsSuccessStatusCode)
+    {
+        var error = await response.Content.ReadAsStringAsync();
+        throw new VirtualCardException($"驗證失敗: {response.StatusCode} - {error}");
+    }
+
+    return await response.Content.ReadFromJsonAsync<PatientInfo>();
+}
+```
+
+### 虛擬卡錯誤代碼
+
+| 代碼 | 說明 | 處理方式 |
+|------|------|---------|
+| VC001 | QR Code 已過期 | 請病患重新產生 QR Code |
+| VC002 | QR Code 格式錯誤 | 檢查掃描品質，重新掃描 |
+| VC003 | 虛擬卡未啟用 | 請病患至健保快易通 App 啟用 |
+| VC004 | Token 過期 | 重新取得 Access Token |
+| VC005 | 診所未授權 | 向健保署申請虛擬卡服務 |
+
+---
+
+## 多讀卡機支援
+
+### 場景
+
+診所有多個診間，每個診間配備一台讀卡機，系統需同時管理多台讀卡機。
+
+### 實作方式
+
+| 方式 | 適用場景 | 說明 |
+|------|---------|------|
+| 多實例 | 每診間獨立系統 | 每個程序連接各自的讀卡機，最簡單 |
+| COM Port 路由 | 單一系統多讀卡機 | 依 COM Port 編號區分讀卡機 |
+| USB HID 識別 | 多台同型讀卡機 | 用 USB 裝置路徑區分 |
+
+### COM Port 管理
+
+```csharp
+// 多讀卡機管理器
+public class MultiReaderManager
+{
+    private readonly Dictionary<string, BhpNhiClient> _readers = new();
+
+    // 註冊讀卡機（診間名稱 → COM Port）
+    public void RegisterReader(string roomName, string comPort)
+    {
+        var client = new BhpNhiClient(comPort);
+        _readers[roomName] = client;
+    }
+
+    // 指定診間讀取
+    public string ReadCard(string roomName)
+    {
+        if (!_readers.TryGetValue(roomName, out var client))
+            throw new InvalidOperationException($"診間 {roomName} 無已註冊的讀卡機");
+        return client.GetPersonData();
+    }
+
+    // 列出所有可用讀卡機
+    public IEnumerable<string> ListAvailableReaders()
+        => _readers.Where(r => r.Value.GetStatus().Contains("ready"))
+                   .Select(r => r.Key);
+}
+```
+
+---
+
+## Token 生命週期表
+
+### 各類 Token 的有效期
+
+| Token 類型 | 有效期 | 刷新方式 | 用途 |
+|-----------|--------|---------|------|
+| SAM 卡 Token | 依卡片設定（通常 1 年） | 更換 SAM 卡 | 讀卡機身份驗證 |
+| Session Token (主控台) | 啟動時產生，關閉時失效 | 重啟主控台 | 本機 API 呼叫 |
+| OAuth Access Token (虛擬卡) | 3600 秒（1 小時） | 用 refresh_token 或重新認證 | 雲端 API 呼叫 |
+| OAuth Refresh Token | 7 天 | 重新登入 | 延長 Access Token |
+| QR Code (虛擬卡) | 5 分鐘 | 病患重新產生 | 單次驗證 |
+
+### Token 監控建議
+
+```
+Token 監控流程：
+├── 啟動時：檢查 SAM 卡有效期，距過期 30 天內發出警告
+├── 每 50 分鐘：自動刷新 OAuth Access Token（在到期前 10 分鐘）
+├── 每次呼叫：檢查回傳的 HTTP Status
+│   ├── 401 → Token 過期，立即刷新
+│   └── 403 → 權限問題，通知管理者
+└── 每日：記錄 Token 使用統計（成功/失敗次數）
+```

@@ -7,8 +7,8 @@
     {
       "name": "health-education-writer",
       "source": "./health-education-writer",
-      "description": "生成有溫度且專業可信的醫療衛教文章",
-      "version": "1.0.0",
+      "description": "生成有溫度且專業可信的醫療衛教文章。涵蓋衛教文章、IG/FB 貼文、影片稿、症狀科普、紅旗警示、自我照護建議等內容類型。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -16,8 +16,8 @@
     {
       "name": "lora-training-prompts",
       "source": "./lora-training-prompts",
-      "description": "生成一致性 AI 圖像提示詞用於 LoRA 訓練資料集",
-      "version": "1.0.0",
+      "description": "生成一致性 AI 圖像提示詞用於 LoRA 訓練資料集。支援角色一致性、多姿態、多角度、多表情的訓練提示詞生成。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -25,8 +25,8 @@
     {
       "name": "quickstart-doc-writer",
       "source": "./quickstart-doc-writer",
-      "description": "產出快速上手說明文件",
-      "version": "1.0.0",
+      "description": "產出 app、工具或機器的快速上手說明文件。輸出純 Markdown 格式，含圖片描述佔位符。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -34,8 +34,8 @@
     {
       "name": "viral-app-builder",
       "source": "./viral-app-builder",
-      "description": "跨平台爆款 App 全生命週期開發助手",
-      "version": "1.0.0",
+      "description": "跨平台爆款 App 全生命週期開發助手。涵蓋創意發想、市場驗證、MVP 規劃、UI/UX 設計、程式開發、測試迭代、成長黑客策略、營利模式到規模化擴展。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -43,17 +43,8 @@
     {
       "name": "nhs-pportal-screening",
       "source": "./nhs-pportal-screening",
-      "description": "國健署預防保健篩檢資格查詢系統",
-      "version": "1.0.0",
-      "author": {
-        "name": "leon"
-      }
-    },
-    {
-      "name": "ui-ux-pro-max",
-      "source": "./ui-ux-pro-max",
-      "description": "UI/UX 設計智能系統",
-      "version": "1.0.0",
+      "description": "國健署預防保健篩檢資格查詢系統（pportal.hpa.gov.tw）。包含登入流程、篩檢資格查詢、健保卡資料讀取、Web 自動化整合設計模式。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -61,17 +52,8 @@
     {
       "name": "vision-database",
       "source": "./vision-database",
-      "description": "展望醫療系統 HIS 資料庫查詢",
-      "version": "1.0.0",
-      "author": {
-        "name": "leon"
-      }
-    },
-    {
-      "name": "remotion-best-practices",
-      "source": "./remotion-best-practices",
-      "description": "Remotion 影片製作最佳實踐（React 影片創建）",
-      "version": "1.0.0",
+      "description": "展望醫療系統 HIS 資料庫查詢技能。支援病患資料、處方、檢驗、預約、庫存等查詢，含資料品質審計、效能監控、儀表板模板。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -79,8 +61,8 @@
     {
       "name": "nhri-risk-plugin",
       "source": "./nhri-risk-plugin",
-      "description": "國衛院 NHRI V4 健康風險評估系統",
-      "version": "1.0.0",
+      "description": "國衛院 NHRI V4 健康風險評估系統。涵蓋 CHD、中風、高血壓、糖尿病、MACE 五大疾病風險模型的公式規格、輸入驗證、風險計算、API 適配器產生。",
+      "version": "2.0.0",
       "author": {
         "name": "leon"
       }
@@ -88,7 +70,7 @@
     {
       "name": "nhi-ic-card",
       "source": "./nhi-ic-card",
-      "description": "健保IC卡讀卡整合（BhpNhi.dll API、篩檢流程、IC卡欄位、上傳格式2.0）",
+      "description": "健保IC卡讀卡整合技能。涵蓋 BhpNhi.dll API 開發、回應碼解碼、成健/BC肝篩檢工作流程、IC卡欄位結構、資料上傳格式2.0。",
       "version": "2.0.0",
       "author": {
         "name": "leon"
@@ -97,7 +79,16 @@
     {
       "name": "medical-content-team",
       "source": "./medical-content-team",
-      "description": "醫療內容創作 Agent 團隊協作系統",
+      "description": "醫療內容創作 Agent 團隊協作系統。包含主持人、醫學記者、科學審查員、病人代言人、魔鬼代言人、流量獵人等 6 個 Agent。",
+      "version": "2.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
+      "name": "continuous-learning",
+      "source": "./continuous-learning",
+      "description": "Instinct-based 自動學習系統。透過 hooks 觀察工具使用，自動偵測模式並產生 instincts（學習行為），含信心度評分與進化機制。",
       "version": "1.0.0",
       "author": {
         "name": "leon"

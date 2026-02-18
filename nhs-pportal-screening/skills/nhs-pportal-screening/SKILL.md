@@ -1,12 +1,32 @@
 ---
 name: nhs-pportal-screening
-description: "國健署預防保健篩檢資格查詢系統（pportal.hpa.gov.tw）的完整領域知識。包含登入流程、VoidAPI2 篩檢資格、GetBasicData 健保卡紀錄、agreeResult 代碼、以及健保IC卡 BhpNhi 整合方式。"
+description: "Web 自動化整合與外部系統嵌入的通用設計原則和實作模式，附帶國健署預防保健篩檢系統（pportal.hpa.gov.tw）作為完整參考實作。涵蓋 Session 管理、多視窗生命週期、DOM Polling、表單填入、XHR 攔截、登入偵測等 7 大通用原則，適用於 Electron、Puppeteer、Playwright、Selenium 等所有瀏覽器自動化框架。"
 argument-hint: "[query-context]"
 ---
 
-# 國健署預防保健篩檢資格查詢系統
+# Web 自動化整合設計模式
 
-## 系統概述
+包含 7 大通用設計原則（Part 1）和國健署篩檢系統參考實作（Part 2）。
+
+---
+
+# Part 1：通用 Web 自動化設計原則
+
+以下原則適用於所有需要「嵌入外部 Web 系統並自動化操作」的場景。每個原則附帶跨框架範例。
+
+## 適用框架
+
+| 框架 | 類型 | Session 重用 | XHR 攔截 | DOM 操作 |
+|------|------|-------------|----------|---------|
+| **Electron** | 桌面嵌入 | `persist:xxx` partition | CDP `Network.getResponseBody` | `executeJavaScript` |
+| **Puppeteer** | Node.js headless | `userDataDir` | `page.on('response')` | `page.evaluate()` |
+| **Playwright** | Node.js headless | `storageState` | `page.on('response')` | `page.evaluate()` |
+| **Selenium** | 多語言 WebDriver | `user-data-dir` Chrome option | Proxy / extension | `execute_script()` |
+| **Cypress** | 前端 E2E 測試 | `cy.session()` | `cy.intercept()` | `cy.get()` |
+
+---
+
+## 系統概述（國健署篩檢系統 — Part 2 參考實作的背景）
 
 國健署（國民健康署，HPA）提供「預防保健服務資訊查詢」系統，供醫療院所查詢病患的各項篩檢資格。
 
@@ -20,11 +40,9 @@ argument-hint: "[query-context]"
 
 ---
 
-## 核心設計原則
+## 7 大核心設計原則
 
-以下原則適用於所有需要「嵌入外部 Web 系統並自動化操作」的場景，不限於國健署。
-
-### 原則 1：Session 重用 — 認證成本最小化
+### 原則 1：Session 重用 — 認證成本最小化 {#principle-1}
 
 **問題**：外部系統的登入流程通常包含驗證碼、MFA 等人工介入步驟，每次查詢都重新登入會嚴重影響效率。
 
@@ -45,7 +63,16 @@ argument-hint: "[query-context]"
 - Cookie 持久化（Electron `persist:xxx` / Puppeteer userDataDir）是層級 3 的基礎
 - 查詢前要重置暫態資料（如換卡查詢要清除上一張卡的快取），避免資料錯配
 
-### 原則 2：多視窗生命週期管理
+**跨框架 Session 持久化**：
+| 框架 | 實作方式 |
+|------|---------|
+| Electron | `session.fromPartition('persist:myapp')` |
+| Puppeteer | `puppeteer.launch({ userDataDir: './session' })` |
+| Playwright | `context.storageState()` → `browser.newContext({ storageState })` |
+| Selenium | `options.add_argument('--user-data-dir=./session')` |
+| Cypress | `cy.session('login', loginFn)` |
+
+### 原則 2：多視窗生命週期管理 {#principle-2}
 
 **問題**：外部系統常用 `window.open` 開子視窗，若不追蹤引用，無法重用也無法正確清理。
 
@@ -62,7 +89,15 @@ if (this._window && !this._window.isDestroyed()) {
 }
 ```
 
-### 原則 3：DOM 偵測用 Polling，不用導航事件
+**跨框架子視窗處理**：
+| 框架 | 捕捉子視窗 | 監聽關閉 |
+|------|-----------|---------|
+| Electron | `webContents.on('did-create-window', win => ...)` | `win.on('closed', () => ref = null)` |
+| Puppeteer | `page.on('popup', popup => ...)` | `popup.on('close', () => ...)` |
+| Playwright | `page.on('popup', popup => ...)` | `popup.on('close', () => ...)` |
+| Selenium | `driver.window_handles` + `driver.switch_to.window()` | Manual polling |
+
+### 原則 3：DOM 偵測用 Polling，不用導航事件 {#principle-3}
 
 **問題**：SPA / 同頁 Modal / ASP.NET Partial PostBack 不會觸發頁面導航事件（`did-navigate`），無法用傳統方式偵測 UI 狀態變化。
 
@@ -77,7 +112,22 @@ if (this._window && !this._window.isDestroyed()) {
 - 登入後頁面狀態變化偵測
 - 使用者手動輸入完成偵測（如驗證碼）
 
-### 原則 4：表單填入 — 模擬真實使用者輸入
+**跨框架 Polling 等效方式**：
+```javascript
+// Puppeteer/Playwright: waitForSelector (比手動 polling 更好)
+await page.waitForSelector('#loginModal', { visible: true, timeout: 10000 });
+
+// Playwright: waitForFunction (自定義條件)
+await page.waitForFunction(() => document.querySelector('#status')?.textContent === 'Ready');
+
+// Cypress: 內建重試機制
+cy.get('#loginModal', { timeout: 10000 }).should('be.visible');
+
+// Selenium: WebDriverWait
+WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, 'loginModal')));
+```
+
+### 原則 4：表單填入 — 模擬真實使用者輸入 {#principle-4}
 
 **問題**：ASP.NET WebForms 的 `__doPostBack` 和各種 JS 框架依賴 DOM 事件鏈（focus → input → change），直接設定 `.value` 不會觸發這些事件。
 
@@ -89,7 +139,16 @@ if (this._window && !this._window.isDestroyed()) {
 
 **填入前必做**：focus → select（清除舊值）→ 再輸入
 
-### 原則 5：按鈕/元素匹配 — 精確優先
+**跨框架表單填入**：
+| 框架 | 最佳方式 | 備選方式 |
+|------|---------|---------|
+| Electron | `webContents.insertText(text)` | `executeJavaScript` dispatch events |
+| Puppeteer | `page.type('#field', text)` | `page.$eval('#field', el => el.value = text)` + dispatch |
+| Playwright | `page.fill('#field', text)` (自動觸發事件) | `page.type('#field', text)` 逐字 |
+| Selenium | `element.send_keys(text)` | `execute_script` 設值 + dispatch |
+| Cypress | `cy.get('#field').type(text)` | `cy.get('#field').invoke('val', text).trigger('change')` |
+
+### 原則 5：按鈕/元素匹配 — 精確優先 {#principle-5}
 
 **問題**：同一頁面可能有多個文字相似的按鈕（如「登入」、「服務登入」、「一般登入」），模糊匹配會點錯。
 
@@ -104,7 +163,23 @@ if (this._window && !this._window.isDestroyed()) {
 - `input[type="password"]`（可能匹配到變更密碼欄位）
 - `text.includes('登入')`（會匹配到多個 tab 和按鈕）
 
-### 原則 6：XHR 攔截 — 攔截 Response Body
+**跨框架元素定位優先級**：
+```javascript
+// Playwright (推薦 — 內建語義定位器)
+await page.getByRole('button', { name: '登入' }).click();       // 最佳
+await page.getByPlaceholder('請輸入帳號').fill('user');           // 次佳
+await page.locator('#ctl00_lbtnLogin').click();                   // ID 精確
+
+// Cypress
+cy.contains('button', '登入').click();                            // 文字精確
+cy.get('#ctl00_lbtnLogin').click();                               // ID 精確
+
+// Selenium
+driver.find_element(By.ID, 'ctl00_lbtnLogin').click()            // ID 精確
+driver.find_element(By.XPATH, "//button[text()='登入']").click()  // 文字精確
+```
+
+### 原則 6：XHR 攔截 — 攔截 Response Body {#principle-6}
 
 **問題**：瀏覽器 `webRequest` API 只能取得 headers，無法取得 response body。自動化場景需要讀取 API 回傳的完整 JSON。
 
@@ -115,7 +190,35 @@ if (this._window && !this._window.isDestroyed()) {
 
 **過濾原則**：只攔截目標 XHR（用 URL pattern + type 過濾），忽略靜態資源，避免效能影響。
 
-### 原則 7：登入狀態偵測 — 頁面語義推斷
+**跨框架 XHR 攔截**：
+```javascript
+// Puppeteer
+page.on('response', async response => {
+  if (response.url().includes('VoidAPI2')) {
+    const json = await response.json();
+    // process json
+  }
+});
+
+// Playwright
+page.on('response', async response => {
+  if (response.url().includes('VoidAPI2')) {
+    const json = await response.json();
+  }
+});
+
+// Playwright (更好的方式 — waitForResponse)
+const response = await page.waitForResponse(r => r.url().includes('VoidAPI2'));
+const data = await response.json();
+
+// Cypress
+cy.intercept('POST', '**/VoidAPI2').as('voidApi');
+cy.wait('@voidApi').then(interception => {
+  const body = interception.response.body;
+});
+```
+
+### 原則 7：登入狀態偵測 — 頁面語義推斷 {#principle-7}
 
 **問題**：外部系統通常沒有公開的「是否已登入」API，需從頁面 DOM 推斷。
 
@@ -127,6 +230,12 @@ if (this._window && !this._window.isDestroyed()) {
 **注意**：偵測需延遲執行（如 500ms），等待動態內容渲染完成。
 
 ---
+
+---
+
+# Part 2：國健署預防保健篩檢系統（參考實作）
+
+以下為 Part 1 原則的完整實作範例，展示如何將上述 7 大原則應用於真實系統。
 
 ## Pportal 系統（Web Portal）
 
@@ -546,3 +655,142 @@ ASP.NET 的 `__doPostBack` 機制依賴 JavaScript 事件。直接設定 `input.
 7. **GetBasicData 先於 VoidAPI2 回傳**，攔截時需注意時序：先暫存健保卡紀錄，待 VoidAPI2 到達時合併
 8. **PreventDatas 同一 Item 可能有多筆記錄**（如多次流感施打），取最新一筆即可
 9. **`hisGetBasicData` ≠ `GetBasicData`**：前者是 pportal 網頁呼叫本機讀卡軟體的 client-side API，後者是 pportal 伺服器回傳的 server-side XHR。讀卡失敗時會出現「等待 hisGetBasicData 回應超時」錯誤
+
+---
+
+## Polling 失敗恢復模式
+
+### 問題場景
+
+XHR Polling（等待 VoidAPI2 / GetBasicData 回傳）可能因網路不穩、伺服器超時或頁面導航中斷而失敗。
+
+### Retry 策略
+
+| 策略 | 適用場景 | 實作 |
+|------|---------|------|
+| 固定間隔重試 | 短暫斷線 | 每 2 秒重試，最多 5 次 |
+| 指數退避 | 伺服器過載 | 2s → 4s → 8s → 16s，最多 4 次 |
+| 帶抖動的指數退避 | 多用戶同時操作 | 基礎指數退避 + random(0-1s) |
+
+### Retry 函式模板
+
+```javascript
+// Playwright / Puppeteer 通用
+async function waitForXhrWithRetry(page, urlPattern, options = {}) {
+  const { maxRetries = 3, baseDelay = 2000, timeout = 30000 } = options;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await page.waitForResponse(
+        res => res.url().includes(urlPattern) && res.status() === 200,
+        { timeout }
+      );
+      return await response.json();
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      console.log(`Retry ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms`);
+      await page.waitForTimeout(delay);
+
+      // 可選：重新觸發請求（如重新點擊查詢按鈕）
+      // await page.click('#queryButton');
+    }
+  }
+}
+```
+
+### 失敗後的恢復流程
+
+```
+Polling 失敗
+├── HTTP 5xx → 指數退避重試
+├── Timeout → 檢查頁面是否仍在預期狀態
+│   ├── 頁面正常 → 重新觸發查詢
+│   └── 頁面已跳轉 → 重新導航至查詢頁
+├── 網路斷線 → 等待網路恢復後重試
+└── 所有重試失敗 → 記錄錯誤、通知操作者
+```
+
+---
+
+## Session 過期處理
+
+### Cookie TTL 監控
+
+Pportal 的 ASP.NET Session Cookie 預設 20 分鐘過期。
+
+| Cookie | 用途 | TTL | 刷新條件 |
+|--------|------|-----|---------|
+| `ASP.NET_SessionId` | 會話識別 | 20 分鐘（sliding） | 任何 HTTP 請求 |
+| `.ASPXAUTH` | 身份驗證 | 取決於伺服器設定 | 登入時設定 |
+
+### 過期偵測
+
+```javascript
+// 監控 Session 狀態
+function isSessionExpired(response) {
+  // 方式 1：被重導到登入頁
+  if (response.url().includes('Login.aspx')) return true;
+
+  // 方式 2：回傳特定錯誤碼
+  if (response.status() === 302 || response.status() === 401) return true;
+
+  // 方式 3：回傳 HTML 包含登入表單
+  const body = await response.text();
+  if (body.includes('txtCaptcha') || body.includes('btnLogin')) return true;
+
+  return false;
+}
+```
+
+### 自動重新登入流程
+
+```
+Session 過期偵測
+├── 保存當前工作狀態（已查詢的病患ID、已完成的項目）
+├── 重新導航至登入頁
+├── 自動填入帳號密碼
+├── 處理驗證碼（需人工介入或 OCR）
+├── 登入成功 → 恢復到之前的工作狀態
+└── 登入失敗 → 通知操作者
+```
+
+---
+
+## 稽核日誌記錄指南
+
+### 應記錄的事件
+
+| 事件類型 | 記錄內容 | 重要性 |
+|---------|---------|--------|
+| 登入/登出 | 時間、帳號、IP、成功/失敗 | 高 |
+| 病患資料查詢 | 時間、操作者、病患 ID、查詢類型 | 高 |
+| 篩檢結果讀取 | 時間、操作者、病患 ID、篩檢項目 | 高 |
+| 系統錯誤 | 時間、錯誤類型、堆疊追蹤 | 中 |
+| Session 事件 | 建立、過期、刷新 | 低 |
+
+### 日誌格式
+
+```json
+{
+  "timestamp": "2024-03-15T10:30:00+08:00",
+  "level": "INFO",
+  "event": "patient_query",
+  "actor": "operator_001",
+  "patient_id": "A123456789",
+  "action": "VoidAPI2_request",
+  "result": "success",
+  "duration_ms": 2350,
+  "metadata": {
+    "screening_items_count": 5,
+    "session_age_minutes": 12
+  }
+}
+```
+
+### 隱私注意事項
+
+- 日誌中的身分證字號必須遮罩（如 `A1234*****`）
+- 不記錄篩檢結果的具體數值
+- 日誌保留期限依機構規定（建議至少 3 年）
+- 日誌存取需有權限控制

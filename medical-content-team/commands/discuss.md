@@ -1,8 +1,9 @@
-# 醫學內容創作團隊討論啟動
+# 內容創作團隊討論啟動
 
-啟動 Agent Teams 協作式醫學內容創作流程。
+啟動 Agent Teams 協作式內容創作流程。
 
 **題目**：$ARGUMENTS
+**領域**：$DOMAIN（預設：medical）
 
 ---
 
@@ -12,50 +13,68 @@
 
 ### Phase 1：準備工作
 
-1. **解析題目**：從 `$ARGUMENTS` 取得討論題目。如果為空，請使用 AskUserQuestion 詢問題目。
+1. **解析題目與領域**：從 `$ARGUMENTS` 取得討論題目，從 `$DOMAIN` 取得內容領域。如果題目為空，請使用 AskUserQuestion 詢問題目。如果 `$DOMAIN` 為空或未指定，預設使用 `medical`。支援的領域代碼：`medical`、`tech`、`financial`、`legal`、`marketing`。
 2. **建立輸出目錄**：
    ```
    mkdir -p record/$ARGUMENTS/作品
    mkdir -p record/$ARGUMENTS/作品/assets
    mkdir -p record/$ARGUMENTS/會議記錄
    ```
-3. **建立團隊**：使用 TeamCreate 建立團隊，團隊名稱使用題目的簡短英文代稱（例如「糖尿病預防」→ `med-diabetes-prevention`）
-4. **建立 PRD**：在 `record/$ARGUMENTS/會議記錄/PRD.md` 寫入內容需求文件，包含：
+3. **建立團隊**：使用 TeamCreate 建立團隊，團隊名稱使用題目的簡短英文代稱（例如「糖尿病預防」→ `med-diabetes-prevention`，「React 效能優化」→ `tech-react-perf`）
+4. **載入領域配置**：讀取 `references/domain-presets.md` 取得對應領域的預設配置（證據標準、免責聲明、目標讀者、審查重點等），讀取 `references/role-mapping.md` 確認各角色的領域對應名稱。
+5. **建立 PRD**：在 `record/$ARGUMENTS/會議記錄/PRD.md` 寫入內容需求文件，根據所選領域調整內容：
    - 題目名稱
-   - 目標讀者：醫療同業（醫師/藥師/護理師）及關注健康的高知識份子
-   - 內容基調：專業 KOL 分析文風格（參照 prompt.md）
+   - **內容領域**：`$DOMAIN`
+   - **目標讀者**：根據領域配置設定（醫療：醫療同業 + 高知識份子 / 科技：開發者 + 技術管理者 / 財經：投資人 + 財務專業人員 / 法律：一般民眾 + 法律從業者 / 行銷：目標客群 + 行銷從業者）
+   - **內容基調**：根據領域配置設定（醫療：專業 KOL 分析文 / 科技：技術深度文 / 財經：數據分析文 / 法律：白話法律文 / 行銷：品牌內容文）
    - 字數目標（800-1600字）
-   - 寫作風格規範：遵循 prompt.md 的硬性規則和輸出結構（A-F）
-   - 格式要求：Facebook 貼文友善，不使用 markdown 語法
+   - **證據標準**：根據領域配置設定
+   - **免責聲明**：根據領域配置設定
+   - 寫作風格規範：醫療領域遵循 prompt.md 的硬性規則和輸出結構（A-F），其他領域參照各 agent 的領域適配指引
+   - 格式要求：根據主要平台設定（醫療：Facebook 貼文友善 / 科技：支援 Markdown 語法 / 其他：依平台調整）
    - 多媒體轉換考量
 
 ### Phase 2：建立任務清單
 
-使用 TaskCreate 建立以下 15 個任務，並用 TaskUpdate 設定依賴關係（addBlockedBy）：
+使用 TaskCreate 建立以下 15 個任務，並用 TaskUpdate 設定依賴關係（addBlockedBy）。
+
+> **領域適配**：以下任務描述以醫療領域為範例。其他領域請將「醫學準確性」替換為對應的審查術語（參見 `references/role-mapping.md`），將「醫學記者」替換為對應的撰稿人角色名稱。
 
 | # | 任務 | 負責人 | blockedBy |
 |---|------|--------|-----------|
-| 1 | [Round 0] 初稿撰寫：研究主題並撰寫 800-1200 字散文敘事初稿 | medical-journalist | — |
-| 2 | [Round 1] 科學審查：審查初稿的醫學準確性、證據來源、統計數據 | science-gatekeeper | 1 |
-| 3 | [Round 1] 易讀性審查：評估初稿的親民度、朗讀友善度、術語易懂度 | patient-advocate | 1 |
+| 1 | [Round 0] 初稿撰寫：研究主題並撰寫 800-1200 字散文敘事初稿 | content-writer (medical-journalist) | — |
+| 2 | [Round 1] 專業審查：審查初稿的專業準確性、證據來源、數據引用 | fact-checker (science-gatekeeper) | 1 |
+| 3 | [Round 1] 易讀性審查：評估初稿的親民度、朗讀友善度、術語易懂度 | audience-advocate (patient-advocate) | 1 |
 | 4 | [Round 1] 批判審查：質疑初稿的假設、偏見、邏輯漏洞、平衡性 | devil-advocate | 1 |
 | 5 | [Round 1] 傳播力審查：評估標題吸引力、開頭鉤子、分享動機、視覺潛力 | traffic-hunter | 1 |
 | 6 | [Round 1] 綜合裁決：整合所有審查結果，撰寫 round1.md，確定改善方向 | facilitator (lead) | 2,3,4,5 |
-| 7 | [Round 2] 深度改寫：根據 Round 1 反饋進行實質性改寫 | medical-journalist | 6 |
-| 8 | [Round 2] 科學複審：審查修改後的醫學準確性 | science-gatekeeper | 7 |
-| 9 | [Round 2] 易讀性複審：審查修改後的易讀性和朗讀友善度 | patient-advocate | 7 |
+| 7 | [Round 2] 深度改寫：根據 Round 1 反饋進行實質性改寫 | content-writer (medical-journalist) | 6 |
+| 8 | [Round 2] 專業複審：審查修改後的專業準確性 | fact-checker (science-gatekeeper) | 7 |
+| 9 | [Round 2] 易讀性複審：審查修改後的易讀性和朗讀友善度 | audience-advocate (patient-advocate) | 7 |
 | 10 | [Round 2] 批判複審：審查修改後的客觀平衡性 | devil-advocate | 7 |
 | 11 | [Round 2] 傳播力複審：審查修改後的傳播潛力 | traffic-hunter | 7 |
 | 12 | [Round 2] 綜合裁決：整合所有複審結果，撰寫 round2.md | facilitator (lead) | 8,9,10,11 |
-| 13 | [Round 3] 最終優化與平衡：流量獵人主導包裝優化 + 醫學記者配合調整 | medical-journalist + traffic-hunter | 12 |
+| 13 | [Round 3] 最終優化與平衡：流量獵人主導包裝優化 + 撰稿人配合調整 | content-writer + traffic-hunter | 12 |
 | 14 | [Round 4] 最終審定：全員最終審查，產出 final.md | all | 13 |
-| 15 | [Post-R4] 圖表擷取：從參考論文系統性擷取文章引用的關鍵圖表，建立 asset_manifest.md | medical-journalist | 14 |
+| 15 | [Post-R4] 素材整理：系統性擷取/整理文章引用的關鍵圖表與素材，建立 asset_manifest.md | content-writer (medical-journalist) | 14 |
+
+### 領域預設快速參照
+
+根據 `$DOMAIN` 套用對應配置（詳見 `references/domain-presets.md`）：
+
+| 領域代碼 | 證據標準 | 角色強調 | 免責聲明 | 主要平台 |
+|---------|---------|---------|---------|---------|
+| `medical` | EBM 分級 | 科學守門人 | 醫療免責 | Facebook |
+| `tech` | 官方文檔+基準測試 | 技術審查員 | 技術免責 | Dev.to / Medium |
+| `financial` | 監管文件+審計報告 | 合規審查員 | 投資免責 | LinkedIn |
+| `legal` | 判例法+法條 | 法律審查員 | 法律免責 | LinkedIn / 部落格 |
+| `marketing` | 市場研究+用戶數據 | 品牌審查員 | 行銷免責 | 依品牌定位 |
 
 ### Phase 3：Spawn Teammates
 
-使用 Task tool 啟動 5 個 teammate，全部使用 `model: opus`。每個 teammate 的 prompt 必須包含：
+使用 Task tool 啟動 5 個 teammate，全部使用 `model: opus`。每個 teammate 的 prompt 必須包含**領域上下文**（`$DOMAIN`），以便各角色啟用對應的領域適配指引。
 
-#### Teammate 1：醫學記者 (medical-journalist)
+#### Teammate 1：撰稿人 / 醫學記者 (medical-journalist)
 ```
 spawn 參數：
 - name: "medical-journalist"
@@ -64,12 +83,15 @@ spawn 參數：
 - model: opus
 
 prompt 要點：
-- 你是醫學記者，負責撰寫和修改文章
+- 你是撰稿人（醫療領域稱為「醫學記者」），負責撰寫和修改文章
+- **內容領域**：$DOMAIN（請先讀取 agent 定義中的「領域適配指引」，了解你在此領域的角色定位和寫作風格）
 - 題目：$ARGUMENTS
 - 輸出目錄：record/$ARGUMENTS/作品/
 - 會議記錄目錄：record/$ARGUMENTS/會議記錄/
-- **寫作風格**：必須先讀取 prompt.md，嚴格遵循其中的風格規範和輸出結構（A標題→B開場→C舊觀念拆解→D臨床衝擊→E受惠族群→F收尾）
-- **格式要求**：不使用 markdown 語法，使用 Facebook 貼文友善的編排格式
+- **寫作風格**：
+  - 醫療領域：必須先讀取 prompt.md，嚴格遵循其中的風格規範和輸出結構（A標題→B開場→C舊觀念拆解→D臨床衝擊→E受惠族群→F收尾）
+  - 其他領域：參照 agent 定義中的領域寫作風格指引
+- **格式要求**：醫療領域不使用 markdown 語法（Facebook 貼文友善），科技領域可使用 markdown，其他領域依主要平台調整
 - **圖表擷取**：研究時順帶擷取重要圖表到 record/$ARGUMENTS/作品/assets/
 - 讀取 medical_journalist_agent.md 中的「圖表擷取指引」了解詳細方法
 - 請先查看 TaskList 認領你的任務
@@ -78,7 +100,7 @@ prompt 要點：
 - 讀取 .claude/agents/medical_journalist_agent.md 了解你的完整角色定義
 ```
 
-#### Teammate 2：科學守門人 (science-gatekeeper)
+#### Teammate 2：事實查核 / 科學守門人 (science-gatekeeper)
 ```
 spawn 參數：
 - name: "science-gatekeeper"
@@ -87,15 +109,16 @@ spawn 參數：
 - model: opus
 
 prompt 要點：
-- 你是科學守門人，負責審查醫學準確性
+- 你是事實查核角色（醫療領域稱為「科學守門人」），負責審查內容的專業準確性
+- **內容領域**：$DOMAIN（請先讀取 agent 定義中的「領域適配指引」，了解你在此領域的證據來源和審查標準）
 - 題目：$ARGUMENTS
 - 請先查看 TaskList 認領你的任務
 - 審查初稿時，閱讀 record/$ARGUMENTS/作品/draft_v0.md
-- 完成審查後 message 主持人（facilitator）和醫學記者（medical-journalist）
+- 完成審查後 message 主持人（facilitator）和撰稿人（medical-journalist）
 - 讀取 .claude/agents/science_gatekeeper_agent.md 了解你的完整角色定義
 ```
 
-#### Teammate 3：病患代言人 (patient-advocate)
+#### Teammate 3：讀者代言 / 病患代言人 (patient-advocate)
 ```
 spawn 參數：
 - name: "patient-advocate"
@@ -104,11 +127,12 @@ spawn 參數：
 - model: opus
 
 prompt 要點：
-- 你是病患代言人，負責確保內容親民易懂
+- 你是讀者代言人（醫療領域稱為「病患代言人」），負責確保內容對目標讀者友善、易懂、實用
+- **內容領域**：$DOMAIN（請先讀取 agent 定義中的「領域適配指引」，了解你在此領域代言的對象和關注焦點）
 - 題目：$ARGUMENTS
 - 請先查看 TaskList 認領你的任務
 - 審查初稿時，閱讀 record/$ARGUMENTS/作品/draft_v0.md
-- 完成審查後 message 主持人（facilitator）和醫學記者（medical-journalist）
+- 完成審查後 message 主持人（facilitator）和撰稿人（medical-journalist）
 - 主動與流量獵人（traffic-hunter）討論易讀性 vs 傳播力的平衡
 - 讀取 .claude/agents/patient_advocate_agent.md 了解你的完整角色定義
 ```
@@ -123,11 +147,12 @@ spawn 參數：
 
 prompt 要點：
 - 你是魔鬼代言人，負責質疑和挑戰內容
+- **內容領域**：$DOMAIN（請先讀取 agent 定義中的「領域適配指引」，了解此領域特有的偏見類型和盲點）
 - 題目：$ARGUMENTS
 - 請先查看 TaskList 認領你的任務
 - 審查初稿時，閱讀 record/$ARGUMENTS/作品/draft_v0.md
-- 完成審查後 message 主持人（facilitator）和醫學記者（medical-journalist）
-- 主動 message 科學守門人（science-gatekeeper）質疑其審查結論
+- 完成審查後 message 主持人（facilitator）和撰稿人（medical-journalist）
+- 主動 message 事實查核角色（science-gatekeeper）質疑其審查結論
 - 讀取 .claude/agents/devil_advocate_agent.md 了解你的完整角色定義
 ```
 
@@ -141,11 +166,12 @@ spawn 參數：
 
 prompt 要點：
 - 你是流量獵人，負責優化內容傳播力
+- **內容領域**：$DOMAIN（請先讀取 agent 定義中的「領域適配指引」，了解此領域的最佳平台策略和標題風格）
 - 題目：$ARGUMENTS
 - 請先查看 TaskList 認領你的任務
 - 審查初稿時，閱讀 record/$ARGUMENTS/作品/draft_v0.md
-- 完成審查後 message 主持人（facilitator）和醫學記者（medical-journalist）
-- 主動與病患代言人（patient-advocate）討論傳播力 vs 易讀性的平衡
+- 完成審查後 message 主持人（facilitator）和撰稿人（medical-journalist）
+- 主動與讀者代言人（patient-advocate）討論傳播力 vs 易讀性的平衡
 - 讀取 .claude/agents/traffic_hunter_agent.md 了解你的完整角色定義
 ```
 
@@ -204,3 +230,5 @@ prompt 要點：
 - **散文敘事風格**：所有內容必須採用 4.0 版散文敘事風格
 - **避免虛構案例**：使用情境描述取代具體人物故事
 - **參考 workflow.md**：詳細流程規範請參閱 workflow.md 5.0 版
+- **領域預設**：`$DOMAIN` 未指定時預設為 `medical`，確保向後相容
+- **領域配置參照**：各領域的證據標準、免責聲明、角色對照等詳見 `references/domain-presets.md` 和 `references/role-mapping.md`

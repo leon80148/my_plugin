@@ -1,0 +1,26 @@
+{
+  "name": "continuous-learning",
+  "description": "自動學習機制。透過 hooks 觀察每次工具使用，自動偵測模式並產生 instincts。基於 everything-claude-code continuous-learning-v2（MIT 授權）。",
+  "version": "1.0.0",
+  "author": { "name": "leon" },
+  "license": "MIT",
+  "keywords": ["learning", "instincts", "hooks", "observation", "自動學習", "持續學習"],
+  "skills": ["./skills/", "./commands/"],
+  "agents": ["./agents/observer.md"],
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.sh\" pre"
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/observe.sh\" post"
+      }]
+    }]
+  }
+}

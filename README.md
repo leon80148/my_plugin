@@ -10,13 +10,12 @@ Claude Code plugin marketplace - 包含醫療內容創作、AI 訓練、文件�
 | `lora-training-prompts` | 生成一致性 AI 圖像提示詞用於 LoRA 訓練資料集 |
 | `quickstart-doc-writer` | 產出快速上手說明文件 |
 | `viral-app-builder` | 跨平台爆款 App 全生命週期開發助手 |
-| `nhs-pportal-screening` | 國健署預防保健篩檢資格查詢系統 |
-| `ui-ux-pro-max` | UI/UX 設計智能系統（67 風格、96 調色盤、56 字體配對） |
-| `vision-database` | 展望醫療系統 HIS 資料庫查詢 |
-| `remotion-best-practices` | Remotion 影片製作最佳實踐（React 影片、動畫、字幕、音訊、3D） |
+| `nhs-pportal-screening` | Web 自動化整合設計模式 + 國健署預防保健篩檢系統參考實作 |
+| `vision-database` | 展望醫療系統 HIS 資料庫查詢（含資料品質審計、效能監控、儀表板模板） |
 | `nhri-risk-plugin` | 國衛院 NHRI V4 健康風險評估（CHD、中風、高血壓、糖尿病、MACE） |
 | `nhi-ic-card` | 健保IC卡讀卡整合（BhpNhi.dll API、篩檢流程、IC卡欄位、上傳格式2.0） |
 | `medical-content-team` | 醫療內容創作 Agent 團隊（6 Agents + 2 Commands） |
+| `continuous-learning` | Instinct-based 自動學習系統（hooks 觀察 + observer agent + 信心度評分） |
 
 ## 安裝方式
 
@@ -55,6 +54,19 @@ claude --plugin-dir ./medical-content-team
 | Patient Advocate | 病人可讀性代言人 |
 | Devil's Advocate | 批判思考、偏見檢測 |
 | Traffic Hunter | 社群媒體優化、流量策略 |
+
+## continuous-learning 使用方式
+
+安裝後自動透過 hooks 觀察工具使用，偵測模式並產生 instincts（學習行為）。
+
+```bash
+/instinct-status     # 顯示已學習的 instincts 及信心度
+/evolve              # 將相關 instincts 進化為 skills/commands/agents
+/instinct-export     # 匯出 instincts 供分享
+/instinct-import     # 從他人匯入 instincts
+```
+
+基於 [everything-claude-code](https://github.com/affaan-m/everything-claude-code) continuous-learning-v2（MIT 授權）。
 
 ## 推薦的其他 Plugin Marketplaces
 

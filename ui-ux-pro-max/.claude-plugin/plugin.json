@@ -1,9 +1,0 @@
-{
-  "name": "ui-ux-pro-max",
-  "description": "UI/UX 設計智能系統。包含 67 種設計風格、96 色彩調色盤、56 字體配對、25 圖表類型、98 UX 指南，支援 13 種技術棧的設計系統生成。",
-  "version": "1.0.0",
-  "author": {
-    "name": "leon"
-  },
-  "keywords": ["ui", "ux", "design", "design-system", "frontend"]
-}
