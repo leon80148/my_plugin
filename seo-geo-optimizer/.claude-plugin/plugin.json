@@ -1,0 +1,20 @@
+{
+  "name": "seo-geo-optimizer",
+  "description": "SEO 與 GEO（生成式引擎最佳化）整合策略工具。優化網站內容以同時在傳統搜尋引擎和 AI 生成式引擎中獲得最大能見度。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": [
+    "SEO",
+    "GEO",
+    "AI搜尋優化",
+    "生成式引擎最佳化",
+    "Schema",
+    "llms.txt",
+    "E-E-A-T",
+    "結構化資料",
+    "知識圖譜",
+    "內容工程"
+  ]
+}

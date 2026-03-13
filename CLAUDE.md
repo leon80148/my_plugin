@@ -112,6 +112,7 @@ plugin-name/
 | quickstart-doc-writer | nested | 文件 | 多類型技術文件產生器 |
 | viral-app-builder | nested | 開發 | 爆款 App 全生命週期開發助手 |
 | vision-database | nested | 醫療系統 | 展望 HIS 資料庫查詢 |
+| seo-geo-optimizer | nested | 行銷 | SEO 與 GEO（生成式引擎最佳化）整合策略工具 |
 | continuous-learning | full-stack | 基礎設施 | Instinct-based 自動學習系統（hooks + observer） |
 
 ## 開發注意事項
