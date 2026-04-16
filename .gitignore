@@ -1,9 +1,26 @@
 # Local Claude Code config (not part of plugin distribution)
 .claude/settings.local.json
 
-# Python cache
+# Python environments and caches
 __pycache__/
-*.pyc
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
 
-# Original .skill ZIP files
+# Local secrets
+.env
+.env.*
+
+# Build artifacts and packaged outputs
+build/
+dist/
 *.skill
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
