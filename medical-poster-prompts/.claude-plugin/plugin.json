@@ -1,0 +1,17 @@
+{
+  "name": "medical-poster-prompts",
+  "description": "將醫學文章、衛教內容與公共衛生訊息轉換成安全、可讀、來源感知的醫療衛教海報生圖提示詞。",
+  "version": "1.0.0",
+  "author": {
+    "name": "leon"
+  },
+  "keywords": [
+    "medical",
+    "poster",
+    "health-education",
+    "image-prompt",
+    "衛教海報",
+    "醫療生圖",
+    "繁體中文"
+  ]
+}

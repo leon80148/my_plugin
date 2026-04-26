@@ -14,6 +14,15 @@
       }
     },
     {
+      "name": "medical-poster-prompts",
+      "source": "./medical-poster-prompts",
+      "description": "將醫學文章、衛教內容與公共衛生訊息轉換成安全、可讀、來源感知的醫療衛教海報生圖提示詞。",
+      "version": "1.0.0",
+      "author": {
+        "name": "leon"
+      }
+    },
+    {
       "name": "lora-training-prompts",
       "source": "./lora-training-prompts",
       "description": "生成一致性 AI 圖像提示詞用於 LoRA 訓練資料集。支援角色一致性、多姿態、多角度、多表情的訓練提示詞生成。",

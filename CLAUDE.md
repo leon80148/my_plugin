@@ -104,6 +104,7 @@ plugin-name/
 | 插件 | 結構 | 領域 | 說明 |
 |------|------|------|------|
 | health-education-writer | nested | 內容 | 多領域教育科普文章生成器 |
+| medical-poster-prompts | nested | 內容 | 醫療衛教海報提示詞生成器 |
 | medical-content-team | multi-agent | 內容 | 6 Agent 協作內容審查團隊 |
 | nhi-ic-card | flat | 醫療系統 | 健保IC卡讀卡整合 |
 | nhri-risk-plugin | flat | 醫療系統 | 國衛院健康風險評估 |

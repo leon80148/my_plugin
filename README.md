@@ -26,6 +26,10 @@ Claude Code 插件市集 — 專為台灣醫療診所、內容創作者和行銷
 
 生成有溫度且專業可信的教育科普文章。支援七大領域：醫療衛教（預設）、理財教育、法律常識、營養知識、科技安全、育兒教養、自訂領域。每篇文章自動包含警示訊號、自我照護/行動建議，並可輸出多種平台格式：部落格、社群貼文、電子報、Podcast 逐字稿、LinkedIn 文章、Twitter/X 串文。
 
+#### `medical-poster-prompts` — 醫療衛教海報提示詞生成器
+
+將醫學文章、衛教內容與公共衛生訊息轉換成安全、可讀、來源感知的醫療衛教海報生圖提示詞。支援臨床格線、友善插畫、急症警示、機轉爆炸圖、迷思破解、照護路線圖、微型世界等風格，並內建醫療廣告、用藥、來源、可近用性與發布前檢查提醒。
+
 #### `medical-content-team` — 醫療內容創作 Agent 團隊
 
 由 6 位 AI Agent 組成的虛擬內容審查團隊，透過 4 輪結構化討論流程產出高品質專業內容。團隊包含：主持人（流程把關）、醫學記者（撰稿執行）、科學守門人（事實查核）、病患代言人（可讀性審查）、魔鬼代言人（批判與偏見檢測）、流量獵人（社群傳播優化）。支援醫療、科技、財經、法律、行銷五大領域的內容審查。
@@ -53,6 +57,7 @@ Claude Code 插件市集 — 專為台灣醫療診所、內容創作者和行銷
 ```bash
 # 安裝想要的 plugin
 claude plugin install health-education-writer --marketplace leon80148/anchia_plugin
+claude plugin install medical-poster-prompts --marketplace leon80148/anchia_plugin
 claude plugin install nhi-ic-card --marketplace leon80148/anchia_plugin
 # ... 其他 plugin 同理
 ```

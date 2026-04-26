@@ -1,0 +1,4 @@
+interface:
+  display_name: "Medical Poster Prompts"
+  short_description: "Create safe health-education poster prompts"
+  default_prompt: "Use $medical-poster-prompts to turn this article into a safe, source-aware medical education poster prompt."
